@@ -6,6 +6,17 @@
 #include "GameFramework/Pawn.h"
 #include "PlanePawn.generated.h"
 
+//비행기 형태 열거형
+UENUM(BlueprintType)
+enum class PlaneForm : uint8
+{
+	DefaultPlane,
+	FlyingPlane,
+	WalkingPlane,
+
+	MAX UMETA(Hidden)
+};
+
 //추가 비행기에 붙힐 컴포넌트들
 class USceneComponent;
 class UStaticMeshComponent;
@@ -53,6 +64,9 @@ protected://컴포넌트 추가
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;//스켈레톤 메쉬 -> 날개짓 하려고 본 깔아둔 메쉬
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<USkeletalMeshComponent> WalkingMesh;//스켈레톤 메쉬 -> 걷기 하려고 만든거
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PropellerMesh_1;//프로펠러 메쉬1
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PropellerMesh_2;//프로펠러 메쉬2
@@ -81,6 +95,10 @@ protected://인풋시스템 추가
 	TObjectPtr<UInputAction> TransformAction;//폼 변환을 위한 액션
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimSequence> PlaneFlapAnimation;//비행기 날개짓 애니메이션
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimSequence> PlaneIdleAnimation;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimSequence> PlaneWalkingAnimation;
 
 
 protected:
@@ -113,9 +131,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Flight|Rotation")
 	float BankInterpRate = 5.0f;
 
+
+protected:
+	void DefaultKeyMaping(float DeltaTime);
+	void FlyingKeyMaping();
+
 private:
 	float CurrentSpeed = 0.0f;
 	float TargetSpeed = 0.0f;
 	float CurrentBankAngle = 0.0f;
 	bool bIsSkeletalMode = false;//폼변환 여부
+	PlaneForm planeForm = PlaneForm::DefaultPlane ;
+	
 };

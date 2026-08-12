@@ -56,7 +56,7 @@ APlanePawn::APlanePawn()//생성자
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
 
-	//스켈레톤 메쉬 컴포넌트 생성
+	//1. 스켈레톤 메쉬 컴포넌트 생성
 	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SkeletalMesh->SetupAttachment(SceneRoot);
 	SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
@@ -65,6 +65,16 @@ APlanePawn::APlanePawn()//생성자
 	SkeletalMesh->SetHiddenInGame(true);
 	//충돌은 기존 플랜메쉬가 담당하기
 	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	//2. 워킹 메쉬 컴포넌트 생성
+	WalkingMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WalkingMesh"));
+	WalkingMesh->SetupAttachment(SceneRoot);
+	WalkingMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	//게임 시작 시에는 기존 스테틱 메쉬만 표시
+	WalkingMesh->SetVisibility(false);
+	WalkingMesh->SetHiddenInGame(true);
+	//충돌은 기존 플랜메쉬가 담당하기
+	WalkingMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned
@@ -115,7 +125,16 @@ void APlanePawn::Tick(float DeltaTime)
 	const FRotator BankRotation(0.0f, 0.0f, CurrentBankAngle);
 	PlaneMesh->SetRelativeRotation(BankRotation);
 	SkeletalMesh->SetRelativeRotation(BankRotation);
+	WalkingMesh->SetRelativeRotation(BankRotation);
 
+	//if (bIsSkeletalMode)
+	//{
+	//	FlyingKeyMaping();
+	//}
+	//else
+	//{
+	//	DefaultKeyMaping(DeltaTime);
+	//}
 
 	//항상 앞으로 움직이는 방향
 	const FVector Movement = GetActorForwardVector() * CurrentSpeed * DeltaTime;
@@ -129,7 +148,7 @@ void APlanePawn::Tick(float DeltaTime)
 	const FRotator PropellerRotation(
 		0.0f,
 		0.0f,
-		PropellerRotationSpeed* DeltaTime
+		PropellerRotationSpeed * DeltaTime
 	);
 	PropellerMesh_1->AddLocalRotation(PropellerRotation);
 	PropellerMesh_2->AddLocalRotation(PropellerRotation);
@@ -213,15 +232,38 @@ void APlanePawn::HandleBoostCompleted(const FInputActionValue& Value)
 
 void APlanePawn::HandleTransformStarted(const FInputActionValue& Value)
 {
-	if (!PlaneMesh || !SkeletalMesh)//메시 둘 중 하나만이라도 없으면 끝
+	if (!PlaneMesh || !SkeletalMesh || !WalkingMesh)//메시 둘 중 하나만이라도 없으면 끝
 	{
 		UE_LOG(LogTemp, Warning, TEXT("노 메시"));
 		return;
 	}
 
-	bIsSkeletalMode = !bIsSkeletalMode;
-	if (bIsSkeletalMode)
+	//상태변화
+	int32 NextState = static_cast<int32>(planeForm) + 1;
+	if (NextState >= static_cast<int32>(PlaneForm::MAX))
 	{
+		NextState = 0;
+	}
+	planeForm = static_cast<PlaneForm>(NextState);
+
+	switch (planeForm)
+	{
+	case PlaneForm::DefaultPlane:
+		//SkeletalMesh->Stop();
+		//if (UAnimSingleNodeInstance* AnimInstance = WalkingMesh->GetSingleNodeInstance())
+		//{
+		//	AnimInstance->SetPlaying(false);
+		//	AnimInstance->SetPosition(0.0f, false);
+		//}
+
+		WalkingMesh->SetVisibility(false);
+		WalkingMesh->SetHiddenInGame(true);
+
+		PlaneMesh->SetVisibility(true, false);
+		PlaneMesh->SetHiddenInGame(false, false);
+
+		return;
+	case PlaneForm::FlyingPlane:
 		//아까 스켈레톤과는 다르게 후자의 파라미터의 경우 자식의 처리까지 지정해주는 것이다.
 		PlaneMesh->SetVisibility(false, false);
 		PlaneMesh->SetHiddenInGame(true, false);
@@ -233,7 +275,7 @@ void APlanePawn::HandleTransformStarted(const FInputActionValue& Value)
 			//그냥 플레이만하면 다시 재생할때 멈추는 문제가 생겨서 아예 초기화하고 다시 실행하는 코드작성
 			SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 			SkeletalMesh->SetAnimation(PlaneFlapAnimation);
-			
+
 			if (UAnimSingleNodeInstance* AnimInstance = SkeletalMesh->GetSingleNodeInstance())
 			{
 				AnimInstance->SetLooping(true);
@@ -245,21 +287,42 @@ void APlanePawn::HandleTransformStarted(const FInputActionValue& Value)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("엥 애니매이션 읎다"));
 		}
-	}
-	else
-	{
-		//SkeletalMesh->Stop();
-		if (UAnimSingleNodeInstance* AnimInstance = SkeletalMesh->GetSingleNodeInstance())
+		return;
+	case PlaneForm::WalkingPlane:
+		//아까 스켈레톤과는 다르게 후자의 파라미터의 경우 자식의 처리까지 지정해주는 것이다.
+		SkeletalMesh->SetVisibility(false, false);
+		SkeletalMesh->SetHiddenInGame(true, false);
+
+		WalkingMesh->SetVisibility(true);
+		WalkingMesh->SetHiddenInGame(false);
+		if (PlaneWalkingAnimation)
 		{
-			AnimInstance->SetPlaying(false);
-			AnimInstance->SetPosition(0.0f, false);
+			//그냥 플레이만하면 다시 재생할때 멈추는 문제가 생겨서 아예 초기화하고 다시 실행하는 코드작성
+			WalkingMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			WalkingMesh->SetAnimation(PlaneWalkingAnimation);
+
+			if (UAnimSingleNodeInstance* AnimInstance = WalkingMesh->GetSingleNodeInstance())
+			{
+				AnimInstance->SetLooping(true);
+				AnimInstance->SetPosition(0.0f, false);
+				AnimInstance->SetPlaying(true);
+			}
 		}
-
-		SkeletalMesh->SetVisibility(false);
-		SkeletalMesh->SetHiddenInGame(true);
-
-		PlaneMesh->SetVisibility(true, false);
-		PlaneMesh->SetHiddenInGame(false, false);
-
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("엥 애니매이션 읎다"));
+		}
+		return;
+		return;
 	}
+
+}
+
+void APlanePawn::DefaultKeyMaping(float DeltaTime)
+{
+
+}
+void APlanePawn::FlyingKeyMaping()
+{
+
 }
