@@ -2,6 +2,15 @@
 
 언리얼 서버가 웹서버에 접속 주소를 등록하고, 클라이언트가 과제용 계정으로 로그인해 해당 주소로 자동 접속하는 예제입니다.
 
+과제 요구사항 대응은 다음과 같습니다.
+
+| 요구사항 | 구현 |
+| --- | --- |
+| 언리얼 서버로 시작하면 웹서버에 서버 IP 등록 | 타이틀 화면 Start 버튼 → `POST /api/server/register` → `Lobby?listen` 이동 |
+| 클라이언트 로그인 후 등록 서버 IP로 접속 | 타이틀 화면 Connect 버튼 → `POST /api/login` → 응답 주소로 `ClientTravel` |
+
+창 두 개를 띄워 버튼 클릭으로 전체 흐름을 검증했습니다. 검증 로그와 시연 과정에서 고친 내용은 [docs/ASSIGNMENT_REPORT.md](docs/ASSIGNMENT_REPORT.md)에 정리했습니다.
+
 ## 구성
 
 - `WebServer/server.py`: 서버 주소 등록 및 로그인 API
