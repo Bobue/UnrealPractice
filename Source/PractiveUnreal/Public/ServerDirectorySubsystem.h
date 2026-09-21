@@ -54,6 +54,7 @@ private:
 	void RegisterServer(bool bOpenListenLevelAfterRegistration);
 	FString ResolvePublicServerAddress() const;
 	FString MakeApiUrl(const FString& Path) const;
+	bool HasUsableWebServerUrl() const;
 	void HandleRegistrationResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully, bool bOpenListenLevel);
 	void HandleLoginResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully);
 	void BroadcastFailure(const FString& Message);

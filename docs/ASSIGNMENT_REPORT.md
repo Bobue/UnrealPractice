@@ -78,10 +78,37 @@ LAN 시연에서는 서버 실행 인자로 `-PublicServerAddress=<호스트 LAN
 - Unreal 자동화 테스트: 정상 로그인 응답, 오류 응답, 서버 주소 누락 응답, 잘못된 형식의 서버 주소 응답 검증 (4개 통과)
 - Unreal Editor Win64 Development C++ 빌드 검증
 
-## 7. AI 활용 내용
+## 7. 2창 실제 시연 검증과 수정 사항
+
+웹서버를 실행한 뒤 타이틀 맵으로 스탠드얼론 창 두 개를 띄우고, 실제 버튼 클릭으로 전체 흐름을 검증했습니다.
+
+검증 결과 로그는 다음과 같습니다.
+
+- 서버 창: `서버 등록 완료: 127.0.0.1:7777` → `LogNet: Browse: /Game/Map/Lobby?listen`
+- 웹서버 저장 파일: `{"serverAddress": "127.0.0.1:7777", ...}`
+- 클라이언트 창: `서버 접속 중: 127.0.0.1:7777` → `Welcomed by server (Level: /Game/Map/Lobby)`
+- 서버 창: `AddClientConnection` → `Join succeeded`
+
+시연 과정에서 발견해 고친 문제는 다음과 같습니다.
+
+1. 타이틀 UI가 전혀 표시되지 않았습니다. `ATitlePC`가 위젯 블루프린트를 `WBP_Title.WBP_Title` 경로로 불러와 생성 클래스(`_C`)를 찾지 못했습니다. `TSoftClassPtr`로 `WBP_Title.WBP_Title_C`를 지정하도록 수정했습니다.
+2. `WBP_Title`의 부모 클래스가 `UUserWidget`이어서 C++ 바인딩이 동작할 수 없었습니다. 부모를 `UTitleWidgetBase`로 변경했습니다.
+3. 마우스 커서와 UI 입력 모드가 꺼져 있어 버튼을 누를 수 없었습니다. 타이틀 진입 시 커서와 UI 입력 모드를 켜도록 했습니다.
+4. `DefaultGame.ini`의 `WebServerBaseUrl=http://127.0.0.1:8080`이 `http:`로만 읽혔습니다. 언리얼 ini 파서가 따옴표 없는 `//`를 주석으로 처리하기 때문입니다. 값을 따옴표로 감싸고, 주소에 `://`가 없으면 원인을 알려주는 오류 메시지를 표시하도록 했습니다.
+5. 로비로 이동한 뒤에도 타이틀 UI가 화면에 남았습니다. `BP_LobbyPC`의 부모가 `ALobbyPC`가 아닌 `ATitlePC`여서 로비에서도 타이틀 위젯이 다시 생성되고 있었습니다. 부모를 `ALobbyPC`로 바로잡고, 타이틀을 떠날 때 위젯을 정리하도록 `EndPlay`를 추가했습니다.
+
+버튼 클릭 없이 흐름을 재현할 수 있도록 콘솔 명령 `TitleStartServer`와 `TitleLogin <아이디> <비밀번호>`도 추가했습니다.
+
+스탠드얼론 창 실행 명령은 다음과 같습니다.
+
+```powershell
+UnrealEditor-Cmd.exe "PractiveUnreal.uproject" /Game/Map/Title -game -windowed -ResX=900 -ResY=500 -unattended
+```
+
+## 8. AI 활용 내용
 
 AI를 활용해 기존 C++ 및 위젯 연결 구조를 분석하고, 웹 API 계약과 언리얼 서브시스템 구조를 설계했습니다. 테스트를 먼저 작성해 기능 부재로 실패하는 것을 확인한 뒤 구현했으며, 컴파일 오류와 실행 로그를 기반으로 코드를 보정했습니다. 마지막으로 실행 방법, API, 시연 순서와 제약사항을 문서화했습니다.
 
-## 8. 과제 범위와 향후 개선
+## 9. 과제 범위와 향후 개선
 
 이번 구현은 수업 시연용 고정 계정과 단일 서버 등록을 대상으로 합니다. 실제 서비스에서는 HTTPS, 비밀번호 해시, 데이터베이스 계정, 로그인 토큰, 여러 서버 목록, 만료 시간과 heartbeat, NAT 및 포트 포워딩 처리가 추가로 필요합니다.

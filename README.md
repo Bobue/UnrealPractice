@@ -27,6 +27,14 @@ python WebServer/server.py
 
 언리얼 에디터에서 서버 창과 클라이언트 창을 실행합니다. 서버 창에서 `StartServerButton`을 누르면 주소 등록 후 `Lobby?listen`으로 이동합니다. 클라이언트 창에서 ID와 비밀번호를 입력하고 `ConnectServerButton`을 누르면 웹 API가 반환한 주소로 접속합니다.
 
+에디터 없이 창 두 개로 시연하려면 다음 명령을 두 번 실행합니다.
+
+```powershell
+UnrealEditor-Cmd.exe "PractiveUnreal.uproject" /Game/Map/Title -game -windowed -ResX=900 -ResY=500 -unattended
+```
+
+버튼 대신 콘솔 명령 `TitleStartServer`, `TitleLogin student 1234`로도 같은 흐름을 실행할 수 있습니다.
+
 다른 PC에서 접속할 때는 호스트 게임을 다음 인자와 함께 실행합니다.
 
 ```text
@@ -34,6 +42,14 @@ python WebServer/server.py
 ```
 
 클라이언트와 호스트의 `Config/DefaultGame.ini`에서 `WebServerBaseUrl`을 웹서버 PC의 LAN 주소로 변경해야 합니다. Windows 방화벽에서도 TCP 8080과 UDP 7777을 허용해야 합니다.
+
+## 주의사항
+
+`Config/DefaultGame.ini`에서 `WebServerBaseUrl` 값은 반드시 따옴표로 감싸야 합니다. 언리얼 ini 파서가 따옴표 없는 `//`를 주석으로 처리해 주소가 `http:`로만 읽힙니다.
+
+```ini
+WebServerBaseUrl="http://127.0.0.1:8080"
+```
 
 ## 테스트
 

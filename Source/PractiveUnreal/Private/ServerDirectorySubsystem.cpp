@@ -130,6 +130,14 @@ void UServerDirectorySubsystem::LoginAndConnect(const FString& UserId, const FSt
 		return;
 	}
 
+	if (!HasUsableWebServerUrl())
+	{
+		BroadcastFailure(FString::Printf(
+			TEXT("웹서버 주소 설정이 잘못되었습니다: \"%s\". DefaultGame.ini의 WebServerBaseUrl을 따옴표로 감싸 주세요."),
+			*WebServerBaseUrl));
+		return;
+	}
+
 	const TSharedRef<FJsonObject> Payload = MakeShared<FJsonObject>();
 	Payload->SetStringField(TEXT("userId"), UserId);
 	Payload->SetStringField(TEXT("password"), Password);
@@ -153,6 +161,14 @@ void UServerDirectorySubsystem::LoginAndConnect(const FString& UserId, const FSt
 
 void UServerDirectorySubsystem::RegisterServer(const bool bOpenListenLevelAfterRegistration)
 {
+	if (!HasUsableWebServerUrl())
+	{
+		BroadcastFailure(FString::Printf(
+			TEXT("웹서버 주소 설정이 잘못되었습니다: \"%s\". DefaultGame.ini의 WebServerBaseUrl을 따옴표로 감싸 주세요."),
+			*WebServerBaseUrl));
+		return;
+	}
+
 	const FString ServerAddress = ResolvePublicServerAddress();
 	const TSharedRef<FJsonObject> Payload = MakeShared<FJsonObject>();
 	Payload->SetStringField(TEXT("serverAddress"), ServerAddress);
@@ -192,6 +208,16 @@ FString UServerDirectorySubsystem::MakeApiUrl(const FString& Path) const
 	FString BaseUrl = WebServerBaseUrl;
 	BaseUrl.RemoveFromEnd(TEXT("/"));
 	return BaseUrl + Path;
+}
+
+bool UServerDirectorySubsystem::HasUsableWebServerUrl() const
+{
+	// ini 파서가 따옴표 없는 //를 주석으로 잘라내면 주소가 "http:"만 남습니다.
+	if (!WebServerBaseUrl.Contains(TEXT("://")))
+	{
+		return false;
+	}
+	return true;
 }
 
 void UServerDirectorySubsystem::HandleRegistrationResponse(
