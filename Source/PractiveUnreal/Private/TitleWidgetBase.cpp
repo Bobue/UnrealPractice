@@ -5,8 +5,9 @@
 
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
-
-#include "Kismet/GameplayStatics.h"
+#include "Components/TextBlock.h"
+#include "Engine/GameInstance.h"
+#include "ServerDirectorySubsystem.h"
 
 void UTitleWidgetBase::NativeConstruct()
 {
@@ -20,17 +21,79 @@ void UTitleWidgetBase::NativeConstruct()
 	{
 		ConnectServerButton->OnClicked.AddDynamic(this, &UTitleWidgetBase::ConnectServer);
 	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UServerDirectorySubsystem* ServerDirectory = GameInstance->GetSubsystem<UServerDirectorySubsystem>())
+		{
+			ServerDirectory->OnStatusChanged.AddDynamic(this, &UTitleWidgetBase::HandleServerDirectoryStatus);
+		}
+	}
+}
+
+void UTitleWidgetBase::NativeDestruct()
+{
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UServerDirectorySubsystem* ServerDirectory = GameInstance->GetSubsystem<UServerDirectorySubsystem>())
+		{
+			ServerDirectory->OnStatusChanged.RemoveDynamic(this, &UTitleWidgetBase::HandleServerDirectoryStatus);
+		}
+	}
+	Super::NativeDestruct();
 }
 
 void UTitleWidgetBase::StartServer()
 {
-	// 서버 시작 로직 구현
-	UE_LOG(LogTemp, Log, TEXT("Start Server button clicked"));
-
-	UGameplayStatics::OpenLevel(GetWorld(), TEXT("Lobby"), true, TEXT("Listen"));
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UServerDirectorySubsystem* ServerDirectory = GameInstance->GetSubsystem<UServerDirectorySubsystem>())
+		{
+			ServerDirectory->StartListenServer();
+			return;
+		}
+	}
+	HandleServerDirectoryStatus(false, TEXT("서버 디렉터리 기능을 초기화하지 못했습니다."));
 }
+
 void UTitleWidgetBase::ConnectServer()
 {
-	// 서버 연결 로직 구현
-	UE_LOG(LogTemp, Log, TEXT("Connect Server button clicked"));
+	if (!UserID || !Password)
+	{
+		HandleServerDirectoryStatus(false, TEXT("로그인 입력 위젯을 찾지 못했습니다."));
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UServerDirectorySubsystem* ServerDirectory = GameInstance->GetSubsystem<UServerDirectorySubsystem>())
+		{
+			ServerDirectory->LoginAndConnect(UserID->GetText().ToString(), Password->GetText().ToString());
+			return;
+		}
+	}
+	HandleServerDirectoryStatus(false, TEXT("서버 디렉터리 기능을 초기화하지 못했습니다."));
+}
+
+void UTitleWidgetBase::HandleServerDirectoryStatus(const bool bSuccess, const FString& Message)
+{
+	UE_LOG(LogTemp, Log, TEXT("Server directory status (%s): %s"), bSuccess ? TEXT("success") : TEXT("failure"), *Message);
+	if (StatusText)
+	{
+		StatusText->SetText(FText::FromString(Message));
+	}
+
+	if (bSuccess && ServerIP)
+	{
+		if (const UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (const UServerDirectorySubsystem* ServerDirectory = GameInstance->GetSubsystem<UServerDirectorySubsystem>())
+			{
+				if (!ServerDirectory->GetLastServerAddress().IsEmpty())
+				{
+					ServerIP->SetText(FText::FromString(ServerDirectory->GetLastServerAddress()));
+				}
+			}
+		}
+	}
 }

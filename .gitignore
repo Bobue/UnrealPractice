@@ -23,3 +23,9 @@ Saved/
 # User-specific Unreal files
 Plugins/*/Intermediate/
 Plugins/*/Binaries/
+
+# Assignment web server runtime files
+WebServer/data/server_registry.json
+WebServer/data/server_registry.json.tmp
+__pycache__/
+*.py[cod]
